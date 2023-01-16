@@ -40,7 +40,11 @@ The \code{spacing} parameter sets the distance in between the points on the line
 \item{progress}{logical; Show progress bar and computation time?}
 }
 \value{
-sf_object containing the weighted VVI values as POINT features, where 0 = no visible cells, and 1 = all of the cells are visible.
+A named list with three objects.
+The `observer` object is an sf_object containing the VVI values as POINT features, where 0 = no visible cells, and 1 = all of the cells are visible.
+The `summed_viewshed` is a `SpatRaster` where cell values are equal to the number of times they are visible from observers.
+These values range from 0 to the number of observer points (depending on spacing).
+The `cumulative_vvi` is a single number indicating the cumulative proportion of cells that are visible from at least one observer point in the maximal area of interest.
 }
 \description{
 The VVI expresses the proportion of visible area to the total area based on a \code{\link[GVI]{viewshed}}.

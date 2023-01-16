@@ -20,7 +20,11 @@
 #' will be generated, and VVI will be computed for every point.
 #' The CRS (\code{\link[sf]{st_crs}}) needs to have a metric unit!
 #'
-#' @return sf_object containing the weighted VVI values as POINT features, where 0 = no visible cells, and 1 = all of the cells are visible. 
+#' @return A named list with three objects.
+#' The `observer` object is an sf_object containing the VVI values as POINT features, where 0 = no visible cells, and 1 = all of the cells are visible.
+#' The `summed_viewshed` is a `SpatRaster` where cell values are equal to the number of times they are visible from observers.
+#' These values range from 0 to the number of observer points (depending on spacing).
+#' The `cumulative_vvi` is a single number indicating the cumulative proportion of cells that are visible from at least one observer point in the maximal area of interest.
 #' @export
 #' 
 #' @importFrom magrittr %>%
@@ -237,12 +241,12 @@ vvi_from_sf <- function(observer, dsm_rast, dtm_rast,
     start_time <- Sys.time()
   }
   
-  vvi_values <- VVI_cpp(dsm = dsm_cpp_rast, dsm_values = dsm_vec,
+  viewshed_indices <- VVI_cpp(dsm = dsm_cpp_rast, dsm_values = dsm_vec,
                           x0 = c0, y0 = r0, h0 = height_0_vec, radius = max_distance,
                           ncores = cores, display_progress = progress)
   
-  valid_values <- unlist(lapply(vvi_values, is.numeric), use.names = FALSE)
-  observer[valid_values,2] <- vvi_values[valid_values]
+  valid_values <- unlist(lapply(viewshed_indices, is.numeric), use.names = FALSE)
+  observer[valid_values,2] <- sapply(viewshed_indices[valid_values], length)
   
   # workaround; should rather have VVI_cpp return VVI directly instead of ncells_visible
   # this is probably an approximation and might be incorrect if viewshed is partly outside raster extent
@@ -252,17 +256,24 @@ vvi_from_sf <- function(observer, dsm_rast, dtm_rast,
     sf::st_write(observer, folder_path, append = TRUE, quiet = T)
   }
   
+  summed_viewshed <- rast(dsm_rast)
+  values(summed_viewshed) <- 0
+  indices_count <- table(unlist(viewshed_indices))
+  values(summed_viewshed)[unique(unlist(viewshed_indices))] <- indices_count
   
+  cumulative_vvi <- length(unique(unlist(viewshed_indices))) / 
+    (as.numeric(sf::st_area(max_aoi)) / raster_res^2)
+
   if (progress) {
     time_dif <- round(cores * ((as.numeric(difftime(Sys.time(), start_time, units = "s"))*1000) / nrow(observer)), 2)
     cat("\n")
     
     time_total <- round(as.numeric(difftime(Sys.time(), start_time, units = "m")))
-    if (time_total < 1){
+    if (time_total < 1) {
       time_total <- round(as.numeric(difftime(Sys.time(), start_time, units = "s")))
       
-      if (time_total < 1){
-        time_total <- round(as.numeric(difftime(Sys.time(), start_time, units = "s")))*1000
+      if (time_total < 1) {
+        time_total <- round(as.numeric(difftime(Sys.time(), start_time, units = "s"))) * 1000
         message(paste("Total runtime:", time_total, " milliseconds"))
       } else {
         message(paste("Total runtime:", time_total, " seconds"))
@@ -277,5 +288,7 @@ vvi_from_sf <- function(observer, dsm_rast, dtm_rast,
   rm(dsm_cpp_rast, dsm_vec, c0, r0, height_0_vec)
   invisible(gc())
   
-  return(observer)
+  return(list(observer = observer,
+              summed_viewshed = summed_viewshed,
+              cumulative_vvi = cumulative_vvi))
 }
