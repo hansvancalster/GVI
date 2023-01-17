@@ -39,7 +39,7 @@ test_that("VVI calculation works", {
   )
 
   expect_equal(
-    round(vvi$observer$VVI, 3),
+    round(vvi$VVI, 3),
     round(vp, 3))
   
   vvi_poly25 <- vvi_from_sf(
@@ -52,7 +52,7 @@ test_that("VVI calculation works", {
     cores = 1)
   
   expect_s3_class(
-    vvi_poly25$observer,
+    vvi_poly25,
     "sf")
 
 })
