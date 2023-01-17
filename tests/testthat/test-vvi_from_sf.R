@@ -29,6 +29,18 @@ test_that("VVI calculation works", {
     raster_res = NULL,
     cores = 1)
   
+  cvvi <- vvi_from_sf(
+    observer = observer,
+    dsm_rast = DSM,
+    dtm_rast = DEM,
+    max_distance = 200,
+    observer_height = 1.7,
+    raster_res = NULL,
+    cores = 1,
+    output_type = "cumulative")
+  
+  expect_equal(round(vvi$VVI, 3), round(cvvi, 3))
+  
   vp <- visibility_proportion(
     observer = observer,
     dsm_rast = DSM,
@@ -50,6 +62,18 @@ test_that("VVI calculation works", {
     observer_height = 1.7,
     raster_res = NULL,
     cores = 1)
+  
+  cvvi_poly25 <- vvi_from_sf(
+    observer = observer %>% st_buffer(25),
+    dsm_rast = DSM,
+    dtm_rast = DEM,
+    max_distance = 200,
+    observer_height = 1.7,
+    raster_res = NULL,
+    cores = 1,
+    output_type = "cumulative")
+  
+  expect_gte(cvvi_poly25, max(vvi_poly25$VVI))
   
   expect_s3_class(
     vvi_poly25,

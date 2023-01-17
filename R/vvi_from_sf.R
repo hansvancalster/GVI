@@ -302,7 +302,7 @@ vvi_from_sf <- function(observer, dsm_rast, dtm_rast,
     area_buffer <- observer %>%
       sf::st_geometry() %>%
       sf::st_buffer(max_distance) %>%
-      sf::st_union %>%
+      sf::st_union() %>%
       sf::st_area()
     cumulative_vvi <- dplyr::n_distinct(unlist(viewshed_indices)) / 
       (as.numeric(area_buffer) / raster_res^2)
