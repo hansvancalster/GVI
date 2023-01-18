@@ -17,7 +17,7 @@ using namespace Rcpp;
 #include "eta_progress_bar.hpp"
 
 // [[Rcpp::export]]
-std::list<std::vector<int>> VVI_cpp(Rcpp::S4 &dsm, const Rcpp::NumericVector &dsm_values,
+std::vector<std::vector<int>> VVI_cpp(Rcpp::S4 &dsm, const Rcpp::NumericVector &dsm_values,
                              const Rcpp::IntegerVector &x0, const Rcpp::IntegerVector &y0,
                              const Rcpp::NumericVector &h0, const int radius,
                              const int ncores=1, const bool display_progress=false)
@@ -37,7 +37,7 @@ std::list<std::vector<int>> VVI_cpp(Rcpp::S4 &dsm, const Rcpp::NumericVector &ds
   const int c0_ref = y0_ref*nc_ref + x0_ref;
   
   // Output list
-  std::list<std::vector<int>> output;
+  std::vector<std::vector<int>> output;
   
   // Prototype of Line of Sight (LoS) paths:
   // Will be used as a reference for all input points

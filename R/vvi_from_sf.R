@@ -292,8 +292,10 @@ vvi_from_sf <- function(observer, dsm_rast, dtm_rast,
     # summed viewshed
     summed_viewshed <- rast(dsm_rast)
     values(summed_viewshed) <- 0
-    indices_count <- table(unlist(viewshed_indices))
-    values(summed_viewshed)[unique(unlist(viewshed_indices))] <- indices_count
+    indices_count <- tabulate(unlist(viewshed_indices))
+    indices_count <- indices_count[indices_count > 0]
+    values(summed_viewshed)[sort(unique(unlist(viewshed_indices)))] <-
+      indices_count
     return(summed_viewshed)
   }
   

@@ -78,5 +78,19 @@ test_that("VVI calculation works", {
   expect_s3_class(
     vvi_poly25,
     "sf")
+  
+  summed_viewshed_poly25 <- vvi_from_sf(
+    observer = observer %>% st_buffer(25),
+    dsm_rast = DSM,
+    dtm_rast = DEM,
+    max_distance = 200,
+    observer_height = 1.7,
+    raster_res = NULL,
+    cores = 1,
+    output_type = "viewshed")
+  
+  expect_s4_class(
+    summed_viewshed_poly25,
+    "SpatRaster")
 
 })
