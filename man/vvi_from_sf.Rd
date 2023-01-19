@@ -15,7 +15,8 @@ vvi_from_sf(
   cores = 1,
   folder_path = NULL,
   progress = FALSE,
-  output_type = c("VVI", "viewshed", "cumulative")
+  output_type = c("VVI", "viewshed", "cumulative"),
+  by_row = FALSE
 )
 }
 \arguments{
@@ -41,6 +42,9 @@ The \code{spacing} parameter sets the distance in between the points on the line
 \item{progress}{logical; Show progress bar and computation time?}
 
 \item{output_type}{A string. One of `"VVI"`, `"viewshed"` or `"cumulative"`}
+
+\item{by_row}{Logical. Default `FALSE`. Whether or not to return the result separately for each row in `observer`.
+Only useful for lines or polygons.}
 }
 \value{
 If `output_type` is `"VVI"`, an sf_object containing the VVI values as POINT features, where 0 = no visible cells, and 1 = all of the cells are visible.

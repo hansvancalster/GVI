@@ -14,6 +14,8 @@
 #' @param folder_path optional; Folder path to where the output should be saved continuously. Must not inklude a filename extension (e.g. '.shp', '.gpkg').
 #' @param progress logical; Show progress bar and computation time?
 #' @param output_type A string. One of `"VVI"`, `"viewshed"` or `"cumulative"`
+#' @param by_row Logical. Default `FALSE`. Whether or not to return the result separately for each row in `observer`.
+#' Only useful for lines or polygons.
 #'
 #' @details 
 #' observer needs to be a geometry of type POINT, LINESTRING, MULTILINESTRING, POLYGON or MULTIPOLYGON. If observer is a LINESTRING or MULTILINESTRING, 
@@ -70,7 +72,8 @@ vvi_from_sf <- function(observer, dsm_rast, dtm_rast,
                         max_distance = 800, observer_height = 1.7,
                         raster_res = NULL, spacing = raster_res,
                         cores = 1, folder_path = NULL, progress = FALSE,
-                        output_type = c("VVI", "viewshed", "cumulative")) {
+                        output_type = c("VVI", "viewshed", "cumulative"),
+                        by_row = FALSE) {
   
   #### 1. Check input ####
   # observer
@@ -132,6 +135,9 @@ vvi_from_sf <- function(observer, dsm_rast, dtm_rast,
   # output_type
   output_type <- match.arg(output_type)
   
+  # by_row
+  stopifnot(is.logical(by_row))
+  
   #### 2. Convert observer to points ####
   if (progress) {
     message("Preprocessing:")
@@ -147,17 +153,29 @@ vvi_from_sf <- function(observer, dsm_rast, dtm_rast,
       sf::st_as_sf() %>% 
       dplyr::rename(geom = x)
   } else if (as.character(sf::st_geometry_type(observer, by_geometry = FALSE)) %in% c("POLYGON", "MULTIPOLYGON")) {
-    observer_bbox <- sf::st_bbox(observer)
-    observer <- terra::rast(xmin = observer_bbox[1], xmax = observer_bbox[3], 
-                            ymin = observer_bbox[2], ymax = observer_bbox[4], 
-                            crs = terra::crs(dsm_rast), resolution = spacing, vals = 0) %>% 
-      terra::crop(terra::vect(observer)) %>% 
-      terra::mask(terra::vect(observer)) %>%
-      terra::xyFromCell(which(terra::values(.) == 0)) %>%
-      as.data.frame() %>% 
-      sf::st_as_sf(coords = c("x","y"), crs = sf::st_crs(observer)) %>% 
-      dplyr::rename(geom = geometry)
-    rm(observer_bbox)
+    if (!by_row) {
+      points <- poly_to_points(obs = observer, dsm_rast = dsm_rast,
+                                 spacing = spacing)
+      # join attributes back
+      observer <- points %>%
+        sf::st_join(observer %>%
+                      dplyr::mutate(rowid = seq_len(dplyr::n())))
+      
+    } else {
+      geom_name <- attr(observer, "sf_column")
+      observer <- observer %>%
+        dplyr::mutate(rowid = seq_len(dplyr::n())) %>%
+        tidyr::nest(data = c(geom_name)) %>%
+        mutate(points_sf = purrr::map(data,
+                               function(x) {
+                                 poly_to_points(obs = x,
+                                                dsm_rast = dsm_rast,
+                                                spacing = spacing)
+                               })) %>%
+        dplyr::select(-data) %>%
+        tidyr::unnest(points_sf) %>%
+        sf::st_as_sf()
+    }
   }
   if (progress) setTxtProgressBar(pb, 1)
   
@@ -302,15 +320,50 @@ vvi_from_sf <- function(observer, dsm_rast, dtm_rast,
   
   if (output_type == "cumulative") {
     # cumulative VVI
-    area_buffer <- observer %>%
-      sf::st_geometry() %>%
-      sf::st_buffer(max_distance) %>%
-      sf::st_union() %>%
-      sf::st_area()
-    cumulative_vvi <- dplyr::n_distinct(unlist(viewshed_indices)) / 
-      (as.numeric(area_buffer) / raster_res^2)
-    rm(dsm_cpp_rast, dsm_vec, c0, r0, height_0_vec)
-    invisible(gc())
-    return(cumulative_vvi)
+    if (!by_row) {
+      area_buffer <- observer %>%
+        sf::st_geometry() %>%
+        sf::st_buffer(max_distance) %>%
+        sf::st_union() %>%
+        sf::st_area()
+      cumulative_vvi <- dplyr::n_distinct(unlist(viewshed_indices)) / 
+        (as.numeric(area_buffer) / raster_res^2)
+      rm(dsm_cpp_rast, dsm_vec, c0, r0, height_0_vec)
+      invisible(gc())
+      return(cumulative_vvi)
+    } else {
+      area_buffer <- observer %>%
+        dplyr::group_by(rowid) %>%
+        sf::st_buffer(max_distance) %>%
+        dplyr::summarise() %>%
+        sf::st_area()
+      nvisible <- vector(mode = "double", length = length(unique(observer$rowid)))
+      for (i in unique(observer$rowid)) {
+        viewshed_indices <- setNames(viewshed_indices, observer$rowid)
+        nvisible[i] <- dplyr::n_distinct(unlist(viewshed_indices[observer$rowid == i]))
+      }
+      cumulative_vvi <- nvisible / (as.numeric(area_buffer) / raster_res^2)
+      rm(dsm_cpp_rast, dsm_vec, c0, r0, height_0_vec)
+      invisible(gc())
+      return(cumulative_vvi)
+      
+    }
   }
+}
+
+
+
+poly_to_points <- function(obs, dsm_rast, spacing) {
+  observer_bbox <- sf::st_bbox(obs)
+  points <- terra::rast(xmin = observer_bbox[1], xmax = observer_bbox[3], 
+                     ymin = observer_bbox[2], ymax = observer_bbox[4], 
+                     crs = terra::crs(dsm_rast),
+                     resolution = spacing, vals = 0) %>% 
+    terra::crop(terra::vect(obs)) %>% 
+    terra::mask(terra::vect(obs)) %>%
+    terra::xyFromCell(which(terra::values(.) == 0)) %>%
+    as.data.frame() %>% 
+    sf::st_as_sf(coords = c("x","y"), crs = sf::st_crs(obs)) %>% 
+    dplyr::rename(geom = geometry)
+  return(points)
 }

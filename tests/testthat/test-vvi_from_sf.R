@@ -92,5 +92,23 @@ test_that("VVI calculation works", {
   expect_s4_class(
     summed_viewshed_poly25,
     "SpatRaster")
-
+  
+  # two polygons separately
+  observers <- sf::st_sfc(
+    sf::st_point(c(492243.3, 5454231.4)),
+    sf::st_point(c(492250, 5454400)),
+    crs = sf::st_crs(26910)) 
+  observers <- sf::st_as_sf(observers)
+  observers <- observers %>% sf::st_buffer(25)
+  cvvi_by_poly <- vvi_from_sf(
+    observer = observers,
+    dsm_rast = DSM,
+    dtm_rast = DEM,
+    max_distance = 200,
+    observer_height = 1.7,
+    raster_res = NULL,
+    cores = 1,
+    output_type = "cumulative",
+    by_row = TRUE)
+  expect_equal(length(cvvi_by_poly), nrow(observers))
 })
