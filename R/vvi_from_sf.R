@@ -267,9 +267,6 @@ vvi_from_sf <- function(observer, dsm_rast, dtm_rast,
     }, add = TRUE)
   }
   
-  on.exit(rm(dsm_cpp_rast, dsm_vec, c0, r0, height_0_vec), add = TRUE)
-  on.exit(invisible(gc()), add = TRUE)
-  
   viewshed_indices <- VVI_cpp(dsm = dsm_cpp_rast, dsm_values = dsm_vec,
                           x0 = c0, y0 = r0, h0 = height_0_vec, radius = max_distance,
                           ncores = cores, display_progress = progress)
@@ -285,6 +282,8 @@ vvi_from_sf <- function(observer, dsm_rast, dtm_rast,
     if (!is.null(folder_path)) {
       sf::st_write(observer, folder_path, append = TRUE, quiet = T)
     }
+    rm(dsm_cpp_rast, dsm_vec, c0, r0, height_0_vec)
+    invisible(gc())
     return(observer)
   }
   
@@ -296,6 +295,8 @@ vvi_from_sf <- function(observer, dsm_rast, dtm_rast,
     indices_count <- indices_count[indices_count > 0]
     values(summed_viewshed)[sort(unique(unlist(viewshed_indices)))] <-
       indices_count
+    rm(dsm_cpp_rast, dsm_vec, c0, r0, height_0_vec)
+    invisible(gc())
     return(summed_viewshed)
   }
   
@@ -308,6 +309,8 @@ vvi_from_sf <- function(observer, dsm_rast, dtm_rast,
       sf::st_area()
     cumulative_vvi <- dplyr::n_distinct(unlist(viewshed_indices)) / 
       (as.numeric(area_buffer) / raster_res^2)
+    rm(dsm_cpp_rast, dsm_vec, c0, r0, height_0_vec)
+    invisible(gc())
     return(cumulative_vvi)
   }
 }
