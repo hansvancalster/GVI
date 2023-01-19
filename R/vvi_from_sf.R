@@ -165,7 +165,7 @@ vvi_from_sf <- function(observer, dsm_rast, dtm_rast,
       geom_name <- attr(observer, "sf_column")
       observer <- observer %>%
         dplyr::mutate(rowid = seq_len(dplyr::n())) %>%
-        tidyr::nest(data = c(geom_name)) %>%
+        tidyr::nest(data = tidyr::all_of(geom_name)) %>%
         mutate(points_sf = purrr::map(data,
                                function(x) {
                                  poly_to_points(obs = x,
@@ -174,6 +174,9 @@ vvi_from_sf <- function(observer, dsm_rast, dtm_rast,
                                })) %>%
         dplyr::select(-data) %>%
         tidyr::unnest(points_sf) %>%
+        sf::st_as_sf() %>%
+        # unnesting messes up bbox
+        terra::vect() %>%
         sf::st_as_sf()
     }
   }
