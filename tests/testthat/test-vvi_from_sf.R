@@ -110,5 +110,16 @@ test_that("VVI calculation works", {
     cores = 1,
     output_type = "cumulative",
     by_row = TRUE)
+  cvvi_second <- vvi_from_sf(
+    observer = observers[2,],
+    dsm_rast = DSM,
+    dtm_rast = DEM,
+    max_distance = 200,
+    observer_height = 1.7,
+    raster_res = NULL,
+    cores = 1,
+    output_type = "cumulative")
+  
   expect_equal(length(cvvi_by_poly), nrow(observers))
+  expect_equal(cvvi_by_poly, c(cvvi_poly25, cvvi_second))
 })

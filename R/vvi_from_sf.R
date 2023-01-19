@@ -341,8 +341,8 @@ vvi_from_sf <- function(observer, dsm_rast, dtm_rast,
         dplyr::summarise() %>%
         sf::st_area()
       nvisible <- vector(mode = "double", length = length(unique(observer$rowid)))
+      viewshed_indices <- setNames(viewshed_indices, observer$rowid)
       for (i in unique(observer$rowid)) {
-        viewshed_indices <- setNames(viewshed_indices, observer$rowid)
         nvisible[i] <- dplyr::n_distinct(unlist(viewshed_indices[observer$rowid == i]))
       }
       cumulative_vvi <- nvisible / (as.numeric(area_buffer) / raster_res^2)
