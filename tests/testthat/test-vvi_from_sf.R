@@ -120,6 +120,6 @@ test_that("VVI calculation works", {
     cores = 1,
     output_type = "cumulative")
   
-  expect_equal(length(cvvi_by_poly), nrow(observers))
-  expect_equal(cvvi_by_poly, c(cvvi_poly25, cvvi_second))
+  expect_equal(nrow(cvvi_by_poly), nrow(observers))
+  expect_equal(cvvi_by_poly$cvvi, c(cvvi_poly25, cvvi_second))
 })

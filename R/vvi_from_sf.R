@@ -27,7 +27,8 @@
 #' If `output_type` is `"VVI"`, an sf_object containing the VVI values as POINT features, where 0 = no visible cells, and 1 = all of the cells are visible.
 #' If `output_type` is `"viewshed"`, a `SpatRaster` where cell values are equal to the number of times they are visible from observers.
 #' These values range from 0 to the number of observer points (depending on spacing).
-#' If `output_type` is `"cumulative"` a single number indicating the cumulative proportion of cells that are visible from at least one observer point inside the area determined by the union of observer points buffered by `max_distance`.
+#' If `output_type` is `"cumulative"` and `by_row` is FALSE, a single number indicating the cumulative proportion of cells that are visible from at least one observer point inside the area determined by the union of observer points buffered by `max_distance`.
+#' In case `by_row` is TRUE, this will be a data.frame with columns `rowid` (identifying each row in `observer`) and `cvvi` (the cumulative viewshed visibility index).
 #' @export
 #' 
 #' @importFrom magrittr %>%
@@ -292,8 +293,9 @@ vvi_from_sf <- function(observer, dsm_rast, dtm_rast,
                           x0 = c0, y0 = r0, h0 = height_0_vec, radius = max_distance,
                           ncores = cores, display_progress = progress)
   
+  valid_values <- unlist(lapply(viewshed_indices, is.numeric), use.names = FALSE)
+  
   if (output_type == "VVI") {
-    valid_values <- unlist(lapply(viewshed_indices, is.numeric), use.names = FALSE)
     observer[valid_values,2] <- sapply(viewshed_indices[valid_values], length)
     
     # workaround; should rather have VVI_cpp return VVI directly instead of ncells_visible
@@ -325,31 +327,39 @@ vvi_from_sf <- function(observer, dsm_rast, dtm_rast,
     # cumulative VVI
     if (!by_row) {
       area_buffer <- observer %>%
+        dplyr::filter(valid_values) %>%
         sf::st_geometry() %>%
         sf::st_buffer(max_distance) %>%
         sf::st_union() %>%
         sf::st_area()
-      cumulative_vvi <- dplyr::n_distinct(unlist(viewshed_indices)) / 
+      cumulative_vvi <- dplyr::n_distinct(unlist(viewshed_indices[valid_values])) / 
         (as.numeric(area_buffer) / raster_res^2)
       rm(dsm_cpp_rast, dsm_vec, c0, r0, height_0_vec)
       invisible(gc())
       return(cumulative_vvi)
     } else {
       area_buffer <- observer %>%
+        dplyr::filter(valid_values) %>%
         dplyr::group_by(rowid) %>%
         sf::st_buffer(max_distance) %>%
         dplyr::summarise() %>%
         sf::st_area()
-      nvisible <- vector(mode = "double", length = length(unique(observer$rowid)))
-      viewshed_indices <- setNames(viewshed_indices, observer$rowid)
-      for (i in unique(observer$rowid)) {
-        nvisible[i] <- dplyr::n_distinct(unlist(viewshed_indices[observer$rowid == i]))
+      nvisible <- vector(mode = "double", length = length(unique(observer$rowid[valid_values])))
+      viewshed_indices_valid <- setNames(viewshed_indices[valid_values],
+                                         observer$rowid[valid_values])
+      for (i in unique(observer$rowid[valid_values])) {
+        nvisible[i] <- dplyr::n_distinct(
+          unlist(viewshed_indices_valid[observer$rowid[valid_values] == i])
+          )
       }
       cumulative_vvi <- nvisible / (as.numeric(area_buffer) / raster_res^2)
+      result <- data.frame(
+        rowid = unique(observer$rowid[valid_values]),
+        cvvi = cumulative_vvi
+      )
       rm(dsm_cpp_rast, dsm_vec, c0, r0, height_0_vec)
       invisible(gc())
-      return(cumulative_vvi)
-      
+      return(result)
     }
   }
 }

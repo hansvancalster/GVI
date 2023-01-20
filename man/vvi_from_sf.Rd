@@ -50,7 +50,8 @@ Only useful for lines or polygons.}
 If `output_type` is `"VVI"`, an sf_object containing the VVI values as POINT features, where 0 = no visible cells, and 1 = all of the cells are visible.
 If `output_type` is `"viewshed"`, a `SpatRaster` where cell values are equal to the number of times they are visible from observers.
 These values range from 0 to the number of observer points (depending on spacing).
-If `output_type` is `"cumulative"` a single number indicating the cumulative proportion of cells that are visible from at least one observer point inside the area determined by the union of observer points buffered by `max_distance`.
+If `output_type` is `"cumulative"` and `by_row` is FALSE, a single number indicating the cumulative proportion of cells that are visible from at least one observer point inside the area determined by the union of observer points buffered by `max_distance`.
+In case `by_row` is TRUE, this will be a data.frame with columns `rowid` (identifying each row in `observer`) and `cvvi` (the cumulative viewshed visibility index).
 }
 \description{
 The VVI expresses the proportion of visible area to the total area based on a \code{\link[GVI]{viewshed}}.
