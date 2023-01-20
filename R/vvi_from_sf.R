@@ -136,6 +136,15 @@ vvi_from_sf <- function(observer, dsm_rast, dtm_rast,
   # output_type
   output_type <- match.arg(output_type)
   
+  # cores
+  stopifnot(is.numeric(cores), cores > 0)
+  if (.Platform$OS.type == "windows" && cores > 1) {
+    cores = 1
+    message(
+      "Setting cores > 1 on a Windows OS is currently not supported.\\n",
+      "The cores argument has been automatically set to 1")
+  }
+  
   # by_row
   stopifnot(is.logical(by_row))
   
