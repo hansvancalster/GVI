@@ -155,13 +155,24 @@ vvi_from_sf <- function(observer, dsm_rast, dtm_rast,
   }
   
   if (as.character(sf::st_geometry_type(observer, by_geometry = FALSE)) %in% c("LINESTRING", "MULTILINESTRING")) {
-    observer <- observer %>%
-      sf::st_union() %>%
-      sf::st_cast("LINESTRING") %>%
-      sf::st_line_sample(density = 1/spacing) %>%
-      sf::st_cast("POINT") %>%
-      sf::st_as_sf() %>% 
-      dplyr::rename(geom = x)
+    if (!by_row) {
+      observer <- observer %>%
+        sf::st_union() %>%
+        sf::st_cast("LINESTRING") %>%
+        sf::st_line_sample(density = 1/spacing) %>%
+        sf::st_cast("POINT") %>%
+        sf::st_as_sf() %>% 
+        dplyr::rename(geom = x)
+    } else {
+      observer <- observer %>%
+        dplyr::mutate(rowid = seq_len(dplyr::n())) %>%
+        sf::st_union(by_feature = by_row) %>%
+        sf::st_cast("LINESTRING") %>%
+        sf::st_line_sample(density = 1/spacing) %>%
+        sf::st_cast("POINT") %>%
+        sf::st_as_sf() %>% 
+        dplyr::rename(geom = x)
+    }
   } else if (as.character(sf::st_geometry_type(observer, by_geometry = FALSE)) %in% c("POLYGON", "MULTIPOLYGON")) {
     if (!by_row) {
       points <- poly_to_points(obs = observer, dsm_rast = dsm_rast,
